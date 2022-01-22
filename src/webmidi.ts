@@ -31,9 +31,10 @@ function parseEvtBytes(e: WebMidi.MIDIMessageEvent) {
     var channel = e.data[0] & 0xf;
 
     return {
+        timestamp: new Date(),
         channel,
-        cmd,
         cmdName: EventTypeEnumValueToKey(cmd),
+        cmd,
         data: data,
 
         cmdRaw,
@@ -41,18 +42,17 @@ function parseEvtBytes(e: WebMidi.MIDIMessageEvent) {
     }
 }
 
-function midiMessageReceived(evt: WebMidi.MIDIMessageEvent) {
-    console.log(parseEvtBytes(evt))
-}
-
-export function connectToWebMIDI() {
+export function connectToWebMIDI(cb?: (d: ReturnType<typeof parseEvtBytes>) => any) {
     console.log('Connecting to controllers.');
     navigator.requestMIDIAccess().then((midiAccess) => {
         var inputs = midiAccess.inputs.values();
         for (var iterItem = inputs.next(); iterItem && !iterItem.done; iterItem = inputs.next()) {
             const input: WebMidi.MIDIInput = iterItem.value
-            input.addEventListener('midimessage', midiMessageReceived)
             console.log(input, input.name, input.manufacturer, input.version);
+            input.addEventListener('midimessage', (evt) => {
+                let eventData = parseEvtBytes(evt)
+                cb?.(eventData)
+            })
         }
     },
         (error) => {
